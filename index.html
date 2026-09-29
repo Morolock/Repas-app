@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2f7d5b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Repas">
+<title>Repas & Courses</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--tx:#2a2a2a;--mu:#7a7468;--ac:#2f7d5b;--ac2:#e6f2ec;--bd:#e4ded3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1c1a;--card:#242724;--tx:#eee;--mu:#9a9a90;--ac:#5cc496;--ac2:#25382f;--bd:#383c38}}
+:root[data-theme="dark"]{--bg:#1a1c1a;--card:#242724;--tx:#eee;--mu:#9a9a90;--ac:#5cc496;--ac2:#25382f;--bd:#383c38}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,sans-serif}
+main{max-width:600px;margin:0 auto;padding:12px 14px 90px}
+h1{font-size:20px;margin:6px 0 12px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;padding:14px;border:0;background:none;color:var(--mu);font-size:15px;font-weight:600}
+nav button.on{color:var(--ac);background:var(--ac2)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+input,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin-bottom:8px}
+textarea{min-height:110px;resize:vertical}
+.btn{padding:10px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-weight:600;font-size:15px}
+.btn.g{background:var(--ac2);color:var(--ac)}
+.row{display:flex;gap:8px;align-items:center}
+table{width:100%;border-collapse:collapse}
+td,th{padding:10px 6px;border-bottom:1px solid var(--bd);text-align:left}
+th{font-size:12px;color:var(--mu);text-transform:uppercase}
+td.d{color:var(--mu);font-size:13px}
+input[type=checkbox]{width:24px;height:24px;margin:0}
+.x{background:none;border:0;color:var(--mu);font-size:18px}
+.t{font-weight:600;cursor:pointer}
+input[type=radio]{width:auto;margin:0 6px 0 0}.opt{display:flex;gap:18px;margin-bottom:8px}.chip{padding:6px 12px;border-radius:99px;border:1px solid var(--bd);background:none;color:var(--mu);font-size:14px}.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}.hint{color:var(--mu);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<section id="v1">
+  <h1>Recettes</h1>
+  <div class="card">
+    <input id="ti" placeholder="Titre de la recette">
+    <div class="opt"><label><input type="radio" name="du" value="Court" checked>Court</label><label><input type="radio" name="du" value="Long">Long</label></div>
+    <textarea id="ig" placeholder="Un ingrédient par ligne&#10;oeuf *2&#10;farine&#10;lait"></textarea>
+    <div class="row"><button class="btn" id="save">Ajouter</button><button class="btn g" id="cancel" hidden>Annuler</button></div>
+    <p class="hint">Astuce : ajoute « *2 » après un ingrédient pour une quantité.</p>
+  </div>
+  <div id="list"></div>
+  <div class="card"><strong>Sauvegarde / partage</strong>
+    <p class="hint">Exporte tes recettes pour les transférer ou les envoyer à ta conjointe, puis colle le texte ici pour les importer (elles s'ajoutent aux existantes).</p>
+    <textarea id="bk" placeholder="Les données apparaissent ici…"></textarea>
+    <div class="row"><button class="btn" id="ex">Exporter (copier)</button><button class="btn g" id="im">Importer</button></div>
+    <p class="hint" id="bkm"></p></div>
+</section>
+<section id="v2" hidden>
+  <h1>Repas de la semaine</h1>
+  <div class="card"><input id="q" type="search" placeholder="Rechercher une recette…"><div class="row" id="chips" style="margin-bottom:8px"><button class="chip on" data-f="">Tous</button><button class="chip" data-f="Court">Court</button><button class="chip" data-f="Long">Long</button></div><table><thead><tr><th></th><th>Repas</th><th>Dernière fois</th></tr></thead><tbody id="tb"></tbody></table><p class="hint" id="empty" hidden>Ajoute d'abord des recettes.</p></div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><strong>Liste de courses</strong><button class="btn g" id="clr">Tout décocher</button></div>
+    <textarea id="out" style="min-height:160px"></textarea>
+    <button class="btn" id="cp" style="width:100%">Copier la liste</button>
+  </div>
+</section>
+</main>
+<nav><button id="n1" class="on">Recettes</button><button id="n2">Repas</button></nav>
+<script>
+let F='';let S={recipes:[],sel:[],last:{}},editId=null;
+try{const r=localStorage.getItem('repas-v1');if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const $=id=>document.getElementById(id);
+const save=()=>{try{localStorage.setItem('repas-v1',JSON.stringify(S))}catch(e){}};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tab(n){$('v1').hidden=n!=1;$('v2').hidden=n!=2;$('n1').className=n==1?'on':'';$('n2').className=n==2?'on':'';if(n==2)renderMeals()}
+$('n1').onclick=()=>tab(1);$('n2').onclick=()=>tab(2);
+function resetForm(){editId=null;$('ti').value='';$('ig').value='';document.querySelector('input[name=du][value=Court]').checked=true;$('save').textContent='Ajouter';$('cancel').hidden=true}
+$('cancel').onclick=resetForm;
+$('save').onclick=()=>{
+  const title=$('ti').value.trim();const ings=$('ig').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!title)return $('ti').focus();const dur=document.querySelector('input[name=du]:checked').value;
+  if(editId){const r=S.recipes.find(r=>r.id===editId);r.title=title;r.ings=ings;r.dur=dur}
+  else S.recipes.push({id:Date.now().toString(36),title,ings,dur});
+  save();resetForm();renderList()
+};
+function renderList(){
+  $('list').innerHTML=S.recipes.length?S.recipes.map(r=>`<div class="card"><div class="row" style="justify-content:space-between"><span class="t" data-e="${r.id}">${esc(r.title)}${r.dur?` <span class="hint">(${r.dur})</span>`:''}</span><button class="x" data-d="${r.id}">🗑</button></div><div class="hint">${esc(r.ings.join(', '))}</div></div>`).join(''):'<p class="hint">Aucune recette pour l\'instant.</p>';
+  document.querySelectorAll('[data-e]').forEach(e=>e.onclick=()=>{const r=S.recipes.find(x=>x.id===e.dataset.e);editId=r.id;$('ti').value=r.title;$('ig').value=r.ings.join('\n');document.querySelector('input[name=du][value='+(r.dur||'Court')+']').checked=true;$('save').textContent='Enregistrer';$('cancel').hidden=false;scrollTo(0,0)});
+  document.querySelectorAll('[data-d]').forEach(e=>e.onclick=()=>{if(!confirm('Supprimer cette recette ?'))return;const id=e.dataset.d;S.recipes=S.recipes.filter(r=>r.id!==id);S.sel=S.sel.filter(x=>x!==id);delete S.last[id];save();renderList()})
+}
+function fmt(d){return d?new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—'}
+function renderMeals(){
+  const q=$('q').value.trim().toLowerCase();const vis=S.recipes.filter(r=>(!F||r.dur===F)&&(!q||r.title.toLowerCase().includes(q)||(r.dur||'').toLowerCase()===q));
+  $('empty').hidden=vis.length>0;$('empty').textContent=S.recipes.length?'Aucun résultat.':'Ajoute d\'abord des recettes.';
+  $('tb').innerHTML=vis.map(r=>`<tr><td><input type="checkbox" data-s="${r.id}" ${S.sel.includes(r.id)?'checked':''}></td><td>${esc(r.title)}${r.dur?` <span class="hint">(${r.dur})</span>`:''}</td><td class="d">${fmt(S.last[r.id])}</td></tr>`).join('');
+  document.querySelectorAll('[data-s]').forEach(c=>c.onchange=()=>{const id=c.dataset.s;
+    if(c.checked){S.sel.push(id);S.last[id]=new Date().toISOString()}else S.sel=S.sel.filter(x=>x!==id);
+    save();renderMeals()});
+  buildText()
+}
+function buildText(){
+  const m=new Map();
+  S.sel.forEach(id=>{const r=S.recipes.find(x=>x.id===id);if(!r)return;
+    r.ings.forEach(line=>{const q=line.match(/^(.*?)\s*[*×]\s*(\d+)$/);const name=(q?q[1]:line).trim();const n=q?parseInt(q[2]):1;if(!name)return;
+      const k=name.toLowerCase().replace(/\s+/g,' ');const e=m.get(k)||{name,n:0};e.n+=n;m.set(k,e)})});
+  $('out').value=[...m.values()].map(e=>e.n>1?`${e.name} *${e.n}`:e.name).join('\n')
+}
+$('q').oninput=renderMeals;document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{F=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));renderMeals()});
+$('clr').onclick=()=>{S.sel=[];save();renderMeals()};
+$('cp').onclick=async()=>{const t=$('out').value;try{await navigator.clipboard.writeText(t)}catch(e){$('out').select();document.execCommand('copy')}$('cp').textContent='Copié ✓';setTimeout(()=>$('cp').textContent='Copier la liste',1500)};
+$('ex').onclick=async()=>{const t=JSON.stringify({v:1,recipes:S.recipes,last:S.last});$('bk').value=t;try{await navigator.clipboard.writeText(t);$('bkm').textContent='Copié dans le presse-papier ✓'}catch(e){$('bk').select();$('bkm').textContent='Copie le texte ci-dessus.'}};
+$('im').onclick=()=>{try{const d=JSON.parse($('bk').value);if(!Array.isArray(d.recipes))throw 0;let n=0;d.recipes.forEach(x=>{if(x&&x.id&&x.title&&!S.recipes.some(y=>y.id===x.id)){S.recipes.push({id:x.id,title:x.title,ings:x.ings||[],dur:x.dur});if(d.last&&d.last[x.id])S.last[x.id]=d.last[x.id];n++}});save();renderList();$('bkm').textContent=n+' recette(s) importée(s) ✓'}catch(e){$('bkm').textContent='Données invalides.'}};
+try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js')}catch(e){}
+renderList();
+</script>
+</body>
+</html>
